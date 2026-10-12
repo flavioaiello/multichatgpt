@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 NAMES = ("Twilight", "Rainbow", "Pinkie", "Fluttershy", "Rarity",
          "Applejack", "Starlight", "Sunset", "Luna", "Celestia",
          "Sweetie", "Scootaloo", "Bloom", "Trixie", "Derpy", "Shining", "Cadance")
@@ -181,7 +181,7 @@ def refresh(args):
         entry.update(source=str(source), version=VERSION)
         (profile / "profile.json").write_text(json.dumps(entry, indent=2) + "\n")
     subprocess.run(["/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
-                    "-f", str(target)], check=True)
+                    "-f", str(target)], capture_output=True, check=False)
     print(f"Refreshed: {target}\nProfile: {profile}")
 
 
