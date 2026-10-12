@@ -1,7 +1,9 @@
 class Multichatgpt < Formula
   desc "Create named, independent ChatGPT desktop profile launchers"
   homepage "https://github.com/flavioaiello/multichatgpt"
-  url "https://github.com/flavioaiello/multichatgpt.git", tag: "v0.1.0"
+  url "https://github.com/flavioaiello/multichatgpt.git",
+      tag: "v0.1.0",
+      revision: "e034a0d4c0897beac4536af87779d67374f48837"
   version "0.1.0"
   license "MIT"
   head "https://github.com/flavioaiello/multichatgpt.git", branch: "main"
@@ -41,7 +43,7 @@ class Multichatgpt < Formula
     assert_equal 2, entries.length
     assert_equal 2, entries.map { |entry| entry.fetch("id") }.uniq.length
     entries.each do |entry|
-      system "#{entry.fetch("app")}/Contents/MacOS/profile-launcher"
+      system "/usr/bin/env", "#{entry.fetch("app")}/Contents/MacOS/profile-launcher"
       profile = Pathname(entry.fetch("profile"))
       assert_equal ["#{profile}/codex", "--user-data-dir=#{profile}/browser"],
                    (profile/"launcher.log").read.lines.map(&:strip)

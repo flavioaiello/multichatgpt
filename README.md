@@ -18,10 +18,13 @@ One-time setup, then install:
 
 ```sh
 brew tap flavioaiello/multichatgpt https://github.com/flavioaiello/multichatgpt.git
+brew trust --formula flavioaiello/multichatgpt/multichatgpt
 brew install multichatgpt
 ```
 
 This repository contains its own `Formula/` directory. The explicit tap URL is needed because its name does not start with `homebrew-`; the package is not in Homebrew core. See [Homebrew's tap documentation](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap).
+
+Current Homebrew requires the formula trust step. Older releases without `brew trust` can omit that line.
 
 Requires macOS, Homebrew, and the ChatGPT/Codex desktop application with bundle identifier `com.openai.codex`. Homebrew installs Python and compiles a native launcher for your Mac. A normal Homebrew build requires Apple's Command Line Tools (`xcode-select --install`).
 
@@ -64,7 +67,7 @@ The profile directories are created with owner-only access. Browser cookies, aut
 
 A clone is a small native launcher, not a copy of the whole desktop app. All clones use the installed main application, so its updates apply to all profiles. The launcher embeds the command and a copy of the locally installed icon; OpenAI application binaries and icons are not shipped in this repository.
 
-The launcher identity and profile paths are distinct. The main app controls its windows, running Dock icon, login flow, and any shared macOS Keychain behavior. Separate-account login has to be confirmed in the real app; automated tests verify that simultaneous launchers pass distinct browser and Codex paths. The earlier Account 2 wrapper reused one profile and reported “Opening in an existing browser session”; newly created clones do not reuse that directory. Opening an already running clone may focus its existing session.
+The launcher identity and profile paths are distinct. The main app controls its windows, running Dock icon, login flow, and any shared macOS Keychain behavior. Testing the installed tool against the compatible desktop build started a second process with a fresh browser profile requiring sign-in, alongside the existing signed-in instance. Automated tests also verify that simultaneous launchers pass distinct browser and Codex paths. Signing into two different accounts has not been automated. The earlier Account 2 wrapper reused one profile and reported “Opening in an existing browser session”; newly created clones do not reuse that directory. Opening an already running clone may focus its existing session.
 
 This is an unofficial tool for the compatible desktop build. The traditional ChatGPT app with a different bundle identifier is rejected rather than silently sharing account data. OpenAI documents [`CODEX_HOME`](https://learn.chatgpt.com/docs/config-file/config-advanced); its documentation does not establish this desktop multi-account launch method.
 

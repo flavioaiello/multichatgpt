@@ -7,5 +7,7 @@
 5. Removed conflicting Script Editor asset metadata and used a clean Info.plist with the main app's ICNS icon.
 6. A compatibility warning appeared with the script-only application wrapper. Replaced its entry point with a universal Mach-O executable supporting x86_64 and arm64, which invokes the bundled shell script.
 7. Packaged the final sources and reproducible build/install scripts in this repository. Build, plist, and code-signature checks validate the wrapper, not account isolation.
+8. Added the `multichatgpt` CLI, independent profile directories, random My Little Pony names, and a Homebrew formula. Automated tests launch two fake desktop instances and verify distinct browser and Codex paths, profile reuse, path quoting, and name exhaustion.
+9. Published version `v0.1.0` to GitHub and added the formula trust command required by current Homebrew.
 
 Local backup artifacts and personal account data are deliberately excluded. Earlier failed wrapper versions are described here rather than distributed as usable applications.
