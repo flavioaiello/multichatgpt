@@ -2,7 +2,8 @@ class Multichatgpt < Formula
   desc "Create named, independent ChatGPT desktop profile launchers"
   homepage "https://github.com/flavioaiello/multichatgpt"
   url "https://github.com/flavioaiello/multichatgpt.git",
-      tag: "v0.2.1"
+      tag: "v0.2.1",
+      revision: "186b00e535991bae41137b0ad42fa7e89af3af15"
   version "0.2.1"
   license "MIT"
   head "https://github.com/flavioaiello/multichatgpt.git", branch: "main"
