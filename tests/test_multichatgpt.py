@@ -2,6 +2,8 @@ import importlib.machinery
 import importlib.util
 from pathlib import Path
 import plistlib
+import os
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -22,7 +24,9 @@ class Clones(unittest.TestCase):
         macos = self.source / "Contents/MacOS"
         macos.mkdir(parents=True)
         with (self.source / "Contents/Info.plist").open("wb") as stream:
-            plistlib.dump({"CFBundleIdentifier": cli.BUNDLE_ID, "CFBundleExecutable": "fake-chatgpt"}, stream)
+            plistlib.dump({"CFBundleIdentifier": cli.BUNDLE_ID, "CFBundleExecutable": "fake-chatgpt",
+                          "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "1.2.3",
+                          "CFBundleURLTypes": [{"CFBundleURLSchemes": ["codex"]}]}, stream)
         fake = macos / "fake-chatgpt"
         fake.write_text('#!/bin/sh\nprintf "%s\\n" "$CODEX_HOME" "$@"\n')
         fake.chmod(0o755)
@@ -40,12 +44,19 @@ class Clones(unittest.TestCase):
         entries = list(cli.records(self.data))
         self.assertEqual(len(entries), 2)
         self.assertNotEqual(entries[0]["id"], entries[1]["id"])
+        # The running app must belong to the named clone, even if the source moves.
+        self.source.rename(self.root / "Moved Source.app")
         identifiers = []
         processes = []
         for entry in entries:
             self.assertRegex(entry["name"], r"^[A-Za-z]+$")
             app = Path(entry["app"])
             identifiers.append(cli.read_plist(app)["CFBundleIdentifier"])
+            info = cli.read_plist(app)
+            self.assertEqual(info["CFBundleDisplayName"], f"ChatGPT {entry['name']}")
+            self.assertEqual(info["CFBundleShortVersionString"], "1.2.3")
+            self.assertNotIn("CFBundleURLTypes", info)
+            self.assertTrue((app / "Contents/MacOS/fake-chatgpt").is_file())
             processes.append(subprocess.Popen([str(app / "Contents/MacOS/profile-launcher")]))
         for process in processes:
             self.assertEqual(process.wait(timeout=10), 0)
@@ -81,6 +92,41 @@ class Clones(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 1)
         self.assertIn("not found", result.stderr)
+
+    def test_refresh_keeps_profile_and_updates_local_executable(self):
+        self.create()
+        entry = list(cli.records(self.data))[0]
+        profile = Path(entry["profile"])
+        marker = profile / "codex/keep.txt"
+        marker.write_text("existing profile data")
+        fake = self.source / "Contents/MacOS/fake-chatgpt"
+        fake.write_text('#!/bin/sh\nprintf "%s\\n" "$CODEX_HOME" "$@" "refreshed"\n')
+        subprocess.run([str(ROOT / "bin/multichatgpt"), "refresh", entry["name"],
+                        "--app", str(self.source), "--data-dir", str(self.data)],
+                       check=True, capture_output=True, text=True)
+        self.assertEqual(marker.read_text(), "existing profile data")
+        after = list(cli.records(self.data))[0]
+        self.assertEqual(after["profile"], entry["profile"])
+        self.assertEqual(after["app"], entry["app"])
+        subprocess.run([str(Path(entry["app"]) / "Contents/MacOS/profile-launcher")], check=True)
+        self.assertEqual((profile / "launcher.log").read_text().splitlines()[-1], "refreshed")
+
+    def test_refresh_refuses_running_clone(self):
+        fake = self.source / "Contents/MacOS/fake-chatgpt"
+        fake.write_text('#!/bin/sh\nsleep 15\n')
+        self.create()
+        entry = list(cli.records(self.data))[0]
+        process = subprocess.Popen([str(Path(entry["app"]) / "Contents/MacOS/profile-launcher")],
+                                   start_new_session=True)
+        try:
+            result = subprocess.run([str(ROOT / "bin/multichatgpt"), "refresh", entry["name"],
+                                     "--app", str(self.source), "--data-dir", str(self.data)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Quit this clone", result.stderr)
+        finally:
+            os.killpg(process.pid, signal.SIGTERM)
+            process.wait(timeout=5)
 
 
 if __name__ == "__main__":

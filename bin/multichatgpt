@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 NAMES = ("Twilight", "Rainbow", "Pinkie", "Fluttershy", "Rarity",
          "Applejack", "Starlight", "Sunset", "Luna", "Celestia",
          "Sweetie", "Scootaloo", "Bloom", "Trixie", "Derpy", "Shining", "Cadance")
@@ -52,22 +52,15 @@ def choose_name(applications, profiles):
     raise ValueError("No available profile name.")
 
 
-def launcher_script(source, profile):
+def launcher_script(executable, profile):
     return f'''#!/bin/zsh
 set -eu
 umask 077
 profile_root={shlex.quote(str(profile))}
 mkdir -p "$profile_root/codex" "$profile_root/browser"
-for app_path in {shlex.quote(str(source))} /Applications/*.app(N) "$HOME"/Applications/*.app(N); do
-  app_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Contents/Info.plist" 2>/dev/null || true)
-  if [[ "$app_id" == {BUNDLE_ID} ]]; then
-    app_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Contents/Info.plist")
-    export CODEX_HOME="$profile_root/codex"
-    exec "$app_path/Contents/MacOS/$app_executable" "--user-data-dir=$profile_root/browser" </dev/null >>"$profile_root/launcher.log" 2>&1
-  fi
-done
-/usr/bin/osascript -e 'display alert "ChatGPT application not found" message "Install the main application in Applications and try again."'
-exit 1
+bundle_root="${{0:A:h:h}}"
+export CODEX_HOME="$profile_root/codex"
+exec "$bundle_root/MacOS/"{shlex.quote(executable)} "--user-data-dir=$profile_root/browser" </dev/null >>"$profile_root/launcher.log" 2>&1
 '''
 
 
@@ -80,6 +73,39 @@ def install_native(destination):
                         "-arch", "arm64", "-arch", "x86_64", "-mmacosx-version-min=11.0",
                         str(ROOT / "src/launcher.c"), "-o", str(destination)], check=True)
     destination.chmod(0o755)
+
+
+def build_bundle(source, source_info, app, name, slug, profile):
+    # APFS copies share storage until modified. Other volumes use a normal copy.
+    copied = subprocess.run(["/bin/cp", "-cR", str(source), str(app)], capture_output=True)
+    if copied.returncode:
+        if app.exists():
+            shutil.rmtree(app)
+        subprocess.run(["/usr/bin/ditto", str(source), str(app)], check=True)
+    macos = app / "Contents/MacOS"
+    resources = app / "Contents/Resources"
+    resources.mkdir(exist_ok=True)
+    executable = source_info["CFBundleExecutable"]
+    if Path(executable).name != executable or executable == "profile-launcher":
+        raise ValueError("Unsupported source executable name.")
+    install_native(macos / "profile-launcher")
+    (resources / "launch-profile.sh").write_text(launcher_script(executable, profile))
+    info = dict(source_info)
+    info.update({"CFBundleExecutable": "profile-launcher",
+                 "CFBundleIdentifier": f"local.multichatgpt.{slug}",
+                 "CFBundleName": f"ChatGPT {name}",
+                 "CFBundleDisplayName": f"ChatGPT {name}",
+                 "MultichatgptVersion": VERSION})
+    # Clones must not replace the original app's global file/link handlers.
+    for field in ("CFBundleURLTypes", "CFBundleDocumentTypes", "CFBundleAlternateNames", "LSUIElement"):
+        info.pop(field, None)
+    with (app / "Contents/Info.plist").open("wb") as stream:
+        plistlib.dump(info, stream)
+    binary = macos / executable
+    # Local signature for the copied executable; nested vendor code is unchanged.
+    subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", str(binary)], check=True)
+    subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", str(app)], check=True)
+    subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], check=True)
 
 
 def clone(args):
@@ -100,32 +126,9 @@ def clone(args):
             (profile / "browser").mkdir(mode=0o700)
             with tempfile.TemporaryDirectory(prefix=".multichatgpt-", dir=applications) as temp:
                 app = Path(temp) / target.name
-                macos = app / "Contents/MacOS"
-                resources = app / "Contents/Resources"
-                macos.mkdir(parents=True)
-                resources.mkdir()
-                install_native(macos / "profile-launcher")
-                (resources / "launch-profile.sh").write_text(launcher_script(source, profile))
-                info = {"CFBundleExecutable": "profile-launcher",
-                        "CFBundleIdentifier": f"local.multichatgpt.{slug}",
-                        "CFBundleName": f"ChatGPT {name}",
-                        "CFBundleDisplayName": f"ChatGPT {name}",
-                        "CFBundlePackageType": "APPL", "CFBundleVersion": VERSION,
-                        "CFBundleInfoDictionaryVersion": "6.0", "LSUIElement": True}
-                icon = source_info.get("CFBundleIconFile", "")
-                if icon and Path(icon).name == icon:
-                    if not icon.endswith(".icns"):
-                        icon += ".icns"
-                    icon_path = source / "Contents/Resources" / icon
-                    if icon_path.is_file():
-                        shutil.copy2(icon_path, resources / "ChatGPT.icns")
-                        info["CFBundleIconFile"] = "ChatGPT.icns"
-                with (app / "Contents/Info.plist").open("wb") as stream:
-                    plistlib.dump(info, stream)
-                subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", str(app)], check=True)
-                subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(app)], check=True)
+                build_bundle(source, source_info, app, name, slug, profile)
                 metadata = {"id": slug, "name": name, "app": str(target),
-                            "profile": str(profile), "source": str(source)}
+                            "profile": str(profile), "source": str(source), "version": VERSION}
                 (profile / "profile.json").write_text(json.dumps(metadata, indent=2) + "\n")
                 app.rename(target)
         except BaseException:
@@ -141,6 +144,47 @@ def records(data_dir):
         yield json.loads(path.read_text())
 
 
+def find_record(args):
+    matches = [entry for entry in records(args.data_dir)
+               if args.name.casefold() in (entry["name"].casefold(), entry["id"].casefold())]
+    if len(matches) != 1:
+        raise ValueError("Profile not found. Run multichatgpt list.")
+    return matches[0]
+
+
+def refresh(args):
+    data = Path(args.data_dir).expanduser().resolve()
+    with (data / ".clone.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        entry = find_record(args)
+        profile = Path(entry["profile"])
+        target = Path(entry["app"])
+        if target.is_symlink() or not target.is_dir():
+            raise ValueError("Existing clone application not found.")
+        if read_plist(target).get("CFBundleIdentifier") != f"local.multichatgpt.{entry['id']}":
+            raise ValueError("Application identity does not match this profile.")
+        source, info = find_app(args.app)
+        processes = subprocess.check_output(["/bin/ps", "-axo", "args="], text=True)
+        if any(str(target / "Contents/MacOS") in line or
+               f"--user-data-dir={profile / 'browser'}" in line for line in processes.splitlines()):
+            raise ValueError("Quit this clone before refreshing it.")
+        with tempfile.TemporaryDirectory(prefix=".multichatgpt-", dir=target.parent) as temp:
+            app = Path(temp) / target.name
+            build_bundle(source, info, app, entry["name"], entry["id"], profile)
+            backup = Path(temp) / "previous.app"
+            target.rename(backup)
+            try:
+                app.rename(target)
+            except BaseException:
+                backup.rename(target)
+                raise
+        entry.update(source=str(source), version=VERSION)
+        (profile / "profile.json").write_text(json.dumps(entry, indent=2) + "\n")
+    subprocess.run(["/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+                    "-f", str(target)], check=True)
+    print(f"Refreshed: {target}\nProfile: {profile}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"multichatgpt {VERSION}")
@@ -154,12 +198,17 @@ def main():
     listing.add_argument("--json", action="store_true")
     opening = commands.add_parser("open", help="Open an existing clone by its name or ID")
     opening.add_argument("name")
-    for command in (create, listing, opening):
+    updating = commands.add_parser("refresh", help="Rebuild a closed clone using the current main app, keeping its profile")
+    updating.add_argument("name")
+    updating.add_argument("--app", help="Main application path (otherwise discovered automatically)")
+    for command in (create, listing, opening, updating):
         command.add_argument("--data-dir", default=str(Path.home() / "Library/Application Support/multichatgpt"))
     args = parser.parse_args()
     try:
         if args.command == "clone":
             clone(args)
+        elif args.command == "refresh":
+            refresh(args)
         elif args.command == "list":
             entries = list(records(args.data_dir))
             if args.json:
@@ -168,11 +217,8 @@ def main():
                 for entry in entries:
                     print(f"{entry['name']}\t{entry['app']}")
         else:
-            matches = [entry for entry in records(args.data_dir)
-                       if args.name.casefold() in (entry["name"].casefold(), entry["id"].casefold())]
-            if len(matches) != 1:
-                raise ValueError("Profile not found. Run multichatgpt list.")
-            subprocess.run(["/usr/bin/open", matches[0]["app"]], check=True)
+            entry = find_record(args)
+            subprocess.run(["/usr/bin/open", entry["app"]], check=True)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"multichatgpt: {error}\n")
 

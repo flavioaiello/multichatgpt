@@ -2,9 +2,8 @@ class Multichatgpt < Formula
   desc "Create named, independent ChatGPT desktop profile launchers"
   homepage "https://github.com/flavioaiello/multichatgpt"
   url "https://github.com/flavioaiello/multichatgpt.git",
-      tag: "v0.1.1",
-      revision: "3e78b973961f0db995cd1320660eb8292cc7712f"
-  version "0.1.1"
+      tag: "v0.2.0"
+  version "0.2.0"
   license "MIT"
   head "https://github.com/flavioaiello/multichatgpt.git", branch: "main"
 
@@ -22,7 +21,7 @@ class Multichatgpt < Formula
   end
 
   test do
-    assert_match "multichatgpt 0.1.1", shell_output("#{bin}/multichatgpt --version")
+    assert_match "multichatgpt 0.2.0", shell_output("#{bin}/multichatgpt --version")
     assert_equal "[]", shell_output("#{bin}/multichatgpt list --json --data-dir '#{testpath}/profiles'").strip
     app = testpath/"Fake ChatGPT.app"
     (app/"Contents/MacOS").mkpath
@@ -43,10 +42,17 @@ class Multichatgpt < Formula
     assert_equal 2, entries.length
     assert_equal 2, entries.map { |entry| entry.fetch("id") }.uniq.length
     entries.each do |entry|
+      assert_path_exists "#{entry.fetch("app")}/Contents/MacOS/fake-chatgpt"
       system "/usr/bin/env", "#{entry.fetch("app")}/Contents/MacOS/profile-launcher"
       profile = Pathname(entry.fetch("profile"))
       assert_equal ["#{profile}/codex", "--user-data-dir=#{profile}/browser"],
                    (profile/"launcher.log").read.lines.map(&:strip)
     end
+    entry = entries.first
+    marker = Pathname(entry.fetch("profile"))/"codex/keep.txt"
+    marker.write "existing profile data"
+    system bin/"multichatgpt", "refresh", entry.fetch("name"),
+           "--app", app, "--data-dir", testpath/"profiles"
+    assert_equal "existing profile data", marker.read
   end
 end

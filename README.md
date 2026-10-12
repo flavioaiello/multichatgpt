@@ -1,4 +1,4 @@
-# multichatgpt
+# MultiChatGPT
 
 Create independent ChatGPT desktop profiles, each with a Dock launcher named after a My Little Pony character.
 
@@ -49,7 +49,7 @@ To select the main application explicitly or choose another installation directo
 multichatgpt clone chatgpt --app "/Applications/ChatGPT.app" --applications-dir /Applications
 ```
 
-The source application is discovered by its bundle identifier, so it can also be named `ChatGPT Pro.app` or `Codex.app`. The launcher tries its original location first and then searches `/Applications` and `~/Applications` if it moves.
+The source application is discovered by its bundle identifier, so it can also be named `ChatGPT Pro.app` or `Codex.app`. Each clone includes a local copy of that application and runs from its own named bundle. macOS therefore identifies the running app as **ChatGPT Twilight**, **ChatGPT Rainbow**, and so on, rather than grouping every profile under the original ChatGPT name.
 
 ## Profile separation
 
@@ -65,9 +65,9 @@ Each clone has a unique directory:
 
 The profile directories are created with owner-only access. Browser cookies, authentication files, and Codex settings are not copied from another account.
 
-A clone is a small native launcher, not a copy of the whole desktop app. All clones use the installed main application, so its updates apply to all profiles. The launcher embeds the command and a copy of the locally installed icon; OpenAI application binaries and icons are not shipped in this repository.
+A clone contains a local copy of the installed desktop app and a native launcher that sets its profile paths. APFS copies share file storage until modified; other volumes use a normal copy. The copied main executable and bundle are signed locally, and bundled vendor frameworks retain their signatures. OpenAI application binaries and icons are not shipped in this repository or the Homebrew package.
 
-The launcher identity and profile paths are distinct. The main app controls its windows, running Dock icon, login flow, and any shared macOS Keychain behavior. Testing the installed tool against the compatible desktop build started a second process with a fresh browser profile requiring sign-in, alongside the existing signed-in instance. Automated tests also verify that simultaneous launchers pass distinct browser and Codex paths. Signing into two different accounts has not been automated. Opening an already running clone may focus its existing session.
+Each clone has a distinct app identity and profile paths. The desktop app controls its windows, login flow, and any shared macOS Keychain behavior. Testing against the compatible desktop build started a separate process with a fresh browser profile requiring sign-in, alongside the existing signed-in instance. Automated tests verify that simultaneous launchers pass distinct browser and Codex paths and keep running after the source app moves. Signing into two different accounts has not been automated. Opening an already running clone may focus its existing session. Clones do not register the original application's global document and URL handlers.
 
 This is an unofficial tool for the compatible desktop build. The traditional ChatGPT app with a different bundle identifier is rejected rather than silently sharing account data. OpenAI documents [`CODEX_HOME`](https://learn.chatgpt.com/docs/config-file/config-advanced); its documentation does not establish this desktop multi-account launch method.
 
@@ -82,15 +82,18 @@ python3 -m unittest discover -s tests -v
 
 Running from source requires Python 3.9+ and Xcode Command Line Tools. It compiles a universal Intel/Apple Silicon launcher when creating a clone. The Homebrew version uses a prebuilt launcher compiled during installation, so clone creation needs no compiler.
 
-Tests use a fake desktop app and temporary directories. They check two independent launches, profile reuse, name exhaustion, path quoting, missing apps, and rejection of incompatible applications. `brew test multichatgpt` also checks the installed CLI and native launcher end to end.
+Tests use a fake desktop app and temporary directories. They check two independent launches, app names, profile reuse, refresh without losing profile data, source independence, name exhaustion, path quoting, missing apps, and rejection of incompatible applications. `brew test multichatgpt` also checks the installed CLI and native launcher end to end.
 
 ## Maintenance
 
 ```sh
 brew update
 brew upgrade multichatgpt
+
+# Quit the clone, then copy the updated main app into it
+multichatgpt refresh Twilight
 ```
 
-Created launchers are self-contained; existing launchers continue to work after removing the CLI. A CLI upgrade applies to newly created launchers. To remove a clone, delete its `.app` from `~/Applications`, its Dock entry, and (only if you want to erase its account data) the corresponding profile directory shown by `multichatgpt list`. To uninstall the CLI, run `brew uninstall multichatgpt`.
+Clones are self-contained and continue to work after removing the CLI or moving the source app. Run `refresh NAME` after upgrading the main app or CLI to update an existing clone while preserving its browser and Codex data. Refresh also converts older wrapper launchers to named app bundles. It refuses to replace a running clone. To remove a clone, delete its `.app` from `~/Applications`, its Dock entry, and (only if you want to erase its account data) the corresponding profile directory shown by `multichatgpt list`. To uninstall the CLI, run `brew uninstall multichatgpt`.
 
 MIT licensed. My Little Pony names are used as profile labels; this project is not affiliated with Hasbro or OpenAI.
