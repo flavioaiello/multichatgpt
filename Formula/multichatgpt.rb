@@ -2,9 +2,8 @@ class Multichatgpt < Formula
   desc "Create named, independent ChatGPT desktop profile launchers"
   homepage "https://github.com/flavioaiello/multichatgpt"
   url "https://github.com/flavioaiello/multichatgpt.git",
-      tag: "v0.1.0",
-      revision: "e034a0d4c0897beac4536af87779d67374f48837"
-  version "0.1.0"
+      tag: "v0.1.1"
+  version "0.1.1"
   license "MIT"
   head "https://github.com/flavioaiello/multichatgpt.git", branch: "main"
 
@@ -22,7 +21,7 @@ class Multichatgpt < Formula
   end
 
   test do
-    assert_match "multichatgpt 0.1.0", shell_output("#{bin}/multichatgpt --version")
+    assert_match "multichatgpt 0.1.1", shell_output("#{bin}/multichatgpt --version")
     assert_equal "[]", shell_output("#{bin}/multichatgpt list --json --data-dir '#{testpath}/profiles'").strip
     app = testpath/"Fake ChatGPT.app"
     (app/"Contents/MacOS").mkpath

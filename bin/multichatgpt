@@ -11,11 +11,10 @@ import shutil
 import subprocess
 import tempfile
 
-VERSION = "0.1.0"
-NAMES = ("Twilight Sparkle", "Rainbow Dash", "Pinkie Pie", "Fluttershy", "Rarity",
-         "Applejack", "Starlight Glimmer", "Sunset Shimmer", "Princess Luna",
-         "Princess Celestia", "Sweetie Belle", "Scootaloo", "Apple Bloom",
-         "Trixie", "Derpy Hooves", "Shining Armor", "Princess Cadance")
+VERSION = "0.1.1"
+NAMES = ("Twilight", "Rainbow", "Pinkie", "Fluttershy", "Rarity",
+         "Applejack", "Starlight", "Sunset", "Luna", "Celestia",
+         "Sweetie", "Scootaloo", "Bloom", "Trixie", "Derpy", "Shining", "Cadance")
 BUNDLE_ID = "com.openai.codex"
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -106,7 +105,7 @@ def clone(args):
                 macos.mkdir(parents=True)
                 resources.mkdir()
                 install_native(macos / "profile-launcher")
-                (resources / "launch-account2.sh").write_text(launcher_script(source, profile))
+                (resources / "launch-profile.sh").write_text(launcher_script(source, profile))
                 info = {"CFBundleExecutable": "profile-launcher",
                         "CFBundleIdentifier": f"local.multichatgpt.{slug}",
                         "CFBundleName": f"ChatGPT {name}",

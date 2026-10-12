@@ -43,6 +43,7 @@ class Clones(unittest.TestCase):
         identifiers = []
         processes = []
         for entry in entries:
+            self.assertRegex(entry["name"], r"^[A-Za-z]+$")
             app = Path(entry["app"])
             identifiers.append(cli.read_plist(app)["CFBundleIdentifier"])
             processes.append(subprocess.Popen([str(app / "Contents/MacOS/profile-launcher")]))

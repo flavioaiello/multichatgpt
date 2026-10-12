@@ -12,9 +12,9 @@ int main(void) {
     if (!last) return 1;
     *last = '\0';
     char script[PATH_MAX];
-    int length = snprintf(script, sizeof(script), "%s/../Resources/launch-account2.sh", path);
+    int length = snprintf(script, sizeof(script), "%s/../Resources/launch-profile.sh", path);
     if (length < 0 || (size_t)length >= sizeof(script)) return 1;
     execl("/bin/zsh", "zsh", script, (char *)NULL);
-    perror("Unable to start Account 2 launcher");
+    perror("Unable to start profile launcher");
     return 1;
 }

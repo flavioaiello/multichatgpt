@@ -4,10 +4,10 @@ Create independent ChatGPT desktop profiles, each with a Dock launcher named aft
 
 ```sh
 multichatgpt clone chatgpt
-# Created: ~/Applications/ChatGPT Twilight Sparkle.app
+# Created: ~/Applications/ChatGPT Twilight.app
 
 multichatgpt clone chatgpt
-# Created: ~/Applications/ChatGPT Rainbow Dash.app
+# Created: ~/Applications/ChatGPT Rainbow.app
 ```
 
 Names are random. Each command creates a fresh profile: its own browser storage, Codex home, and launcher identity. Open the new app and sign in with the account you want to use. Reopening it uses the same profile.
@@ -38,10 +38,10 @@ multichatgpt clone chatgpt --open
 multichatgpt list
 
 # Open one later (use a name from the list)
-multichatgpt open "Twilight Sparkle"
+multichatgpt open Twilight
 ```
 
-Each `.app` appears in `~/Applications`; drag it into your Dock. Names include Twilight Sparkle, Rainbow Dash, Pinkie Pie, Fluttershy, Rarity, Applejack, and more. Existing names are skipped. After all names are used, a numeric suffix is added.
+Each `.app` appears in `~/Applications`; drag it into your Dock. Names use a single word: Twilight, Rainbow, Pinkie, Fluttershy, Rarity, Applejack, and more. Existing names are skipped. After all names are used, a numeric suffix is added.
 
 To select the main application explicitly or choose another installation directory:
 
@@ -56,7 +56,7 @@ The source application is discovered by its bundle identifier, so it can also be
 Each clone has a unique directory:
 
 ```text
-~/Library/Application Support/multichatgpt/profiles/twilight-sparkle/
+~/Library/Application Support/multichatgpt/profiles/twilight/
 ├── browser/       # --user-data-dir
 ├── codex/         # CODEX_HOME
 ├── profile.json   # Name and launcher paths
