@@ -63,11 +63,11 @@ Each clone has a unique directory:
 └── launcher.log   # Main application's output
 ```
 
-The profile directories are created with owner-only access. Browser cookies, authentication files, and Codex settings are not copied from another account. The old `ChatGPT-Account2` setup is separate from these newly generated profiles.
+The profile directories are created with owner-only access. Browser cookies, authentication files, and Codex settings are not copied from another account.
 
 A clone is a small native launcher, not a copy of the whole desktop app. All clones use the installed main application, so its updates apply to all profiles. The launcher embeds the command and a copy of the locally installed icon; OpenAI application binaries and icons are not shipped in this repository.
 
-The launcher identity and profile paths are distinct. The main app controls its windows, running Dock icon, login flow, and any shared macOS Keychain behavior. Testing the installed tool against the compatible desktop build started a second process with a fresh browser profile requiring sign-in, alongside the existing signed-in instance. Automated tests also verify that simultaneous launchers pass distinct browser and Codex paths. Signing into two different accounts has not been automated. The earlier Account 2 wrapper reused one profile and reported “Opening in an existing browser session”; newly created clones do not reuse that directory. Opening an already running clone may focus its existing session.
+The launcher identity and profile paths are distinct. The main app controls its windows, running Dock icon, login flow, and any shared macOS Keychain behavior. Testing the installed tool against the compatible desktop build started a second process with a fresh browser profile requiring sign-in, alongside the existing signed-in instance. Automated tests also verify that simultaneous launchers pass distinct browser and Codex paths. Signing into two different accounts has not been automated. Opening an already running clone may focus its existing session.
 
 This is an unofficial tool for the compatible desktop build. The traditional ChatGPT app with a different bundle identifier is rejected rather than silently sharing account data. OpenAI documents [`CODEX_HOME`](https://learn.chatgpt.com/docs/config-file/config-advanced); its documentation does not establish this desktop multi-account launch method.
 
@@ -92,7 +92,5 @@ brew upgrade multichatgpt
 ```
 
 Created launchers are self-contained; existing launchers continue to work after removing the CLI. A CLI upgrade applies to newly created launchers. To remove a clone, delete its `.app` from `~/Applications`, its Dock entry, and (only if you want to erase its account data) the corresponding profile directory shown by `multichatgpt list`. To uninstall the CLI, run `brew uninstall multichatgpt`.
-
-The source repository also retains `examples/ChatGPT-Account2.applescript`, the original Account 2 source and build scripts, and `HISTORY.md`. Those are the earlier fixed-profile implementation; use the CLI for new clones.
 
 MIT licensed. My Little Pony names are used as profile labels; this project is not affiliated with Hasbro or OpenAI.

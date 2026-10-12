@@ -1,12 +1,10 @@
 import importlib.machinery
 import importlib.util
-import json
 from pathlib import Path
 import plistlib
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 loader = importlib.machinery.SourceFileLoader("multichatgpt", str(ROOT / "bin/multichatgpt"))
